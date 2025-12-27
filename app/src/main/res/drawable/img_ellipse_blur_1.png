@@ -1,0 +1,16 @@
+<svg preserveAspectRatio="none" width="100%" height="100%" overflow="visible" style="display: block;" viewBox="0 0 62 62" fill="none" xmlns="http://www.w3.org/2000/svg">
+<g id="Ellipse Blur" filter="url(#filter0_f_0_204)">
+<path d="M60 31C60 47.0163 47.0163 60 31 60C14.9837 60 2 47.0163 2 31C2 14.9837 14.9837 2 31 2C47.0163 2 60 14.9837 60 31ZM4.9 31C4.9 45.4146 16.5854 57.1 31 57.1C45.4146 57.1 57.1 45.4146 57.1 31C57.1 16.5854 45.4146 4.9 31 4.9C16.5854 4.9 4.9 16.5854 4.9 31Z" fill="url(#paint0_linear_0_204)"/>
+</g>
+<defs>
+<filter id="filter0_f_0_204" x="0" y="0" width="62" height="62" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+<feFlood flood-opacity="0" result="BackgroundImageFix"/>
+<feBlend mode="normal" in="SourceGraphic" in2="BackgroundImageFix" result="shape"/>
+<feGaussianBlur stdDeviation="1" result="effect1_foregroundBlur_0_204"/>
+</filter>
+<linearGradient id="paint0_linear_0_204" x1="6.79107" y1="12.2008" x2="31" y2="60" gradientUnits="userSpaceOnUse">
+<stop stop-color="white" stop-opacity="0"/>
+<stop offset="1" stop-color="#BBBFC7"/>
+</linearGradient>
+</defs>
+</svg>
