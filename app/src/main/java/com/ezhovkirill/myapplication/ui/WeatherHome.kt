@@ -6,25 +6,36 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.List
 import androidx.compose.material.icons.filled.Place
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.outlined.Star
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.SearchBar
 import androidx.compose.material3.SearchBarDefaults
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -72,10 +83,13 @@ const val imgEllipseBlur1 = "https://www.figma.com/api/mcp/asset/a092756f-41e7-4
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun WeatherHome(viewModel: WeatherViewModel = viewModel()) {
+fun WeatherHome(viewModel: WeatherViewModel = viewModel(), innerPadding: PaddingValues = PaddingValues(0.dp)) {
     val uiState by viewModel.uiState.collectAsState()
     var query by remember { mutableStateOf("") }
+    var selectedTab by remember { mutableIntStateOf(0) }
     var showSearchDialog by remember { mutableStateOf(false) }
+    var showSettingsDialog by remember { mutableStateOf(false) }
+    var showFavoritesDialog by remember { mutableStateOf(false) }
 
     val permissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestMultiplePermissions()
@@ -94,6 +108,96 @@ fun WeatherHome(viewModel: WeatherViewModel = viewModel()) {
                 Manifest.permission.ACCESS_COARSE_LOCATION
             )
         )
+    }
+
+    if (showSettingsDialog) {
+        AlertDialog(
+            onDismissRequest = { showSettingsDialog = false },
+            title = { Text("Настройки") },
+            text = {
+                Column {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text("Темная тема")
+                        Switch(
+                            checked = uiState.isDarkTheme,
+                            onCheckedChange = { viewModel.toggleTheme(it) }
+                        )
+                    }
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text("Имперские единицы (°F, mph)")
+                        Switch(
+                            checked = uiState.isImperialUnits,
+                            onCheckedChange = { viewModel.toggleUnits(it) }
+                        )
+                    }
+                }
+            },
+            confirmButton = {
+                Button(onClick = { showSettingsDialog = false }) {
+                    Text("OK")
+                }
+            }
+        )
+    }
+
+    if (showFavoritesDialog) {
+        Dialog(onDismissRequest = { showFavoritesDialog = false }) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(Color.White, RoundedCornerShape(16.dp))
+                    .padding(16.dp)
+            ) {
+                Column {
+                    Text("Избранные города", style = TextStyle(fontSize = 20.sp, fontWeight = FontWeight.Bold))
+                    Spacer(modifier = Modifier.height(16.dp))
+                    LazyColumn {
+                        items(uiState.favoriteCities) { city ->
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable {
+                                        viewModel.selectCity(
+                                            SearchResultItem(
+                                                name = city.name,
+                                                description = "",
+                                                lat = city.latitude,
+                                                lon = city.longitude,
+                                                id = city.id
+                                            )
+                                        )
+                                        showFavoritesDialog = false
+                                    }
+                                    .padding(vertical = 8.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(city.name, fontSize = 18.sp)
+                                IconButton(onClick = { viewModel.removeFromFavorites(city.id) }) {
+                                    Icon(Icons.Default.Star, contentDescription = "Remove", tint = Color(0xFF48319D))
+                                }
+                            }
+                        }
+                    }
+                    if (uiState.favoriteCities.isEmpty()) {
+                        Text("Список пуст", color = Color.Gray)
+                    }
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Button(onClick = { showFavoritesDialog = false }, modifier = Modifier.align(Alignment.End)) {
+                        Text("Закрыть")
+                    }
+                }
+            }
+        }
     }
 
     if (showSearchDialog) {
@@ -128,7 +232,7 @@ fun WeatherHome(viewModel: WeatherViewModel = viewModel()) {
                     LazyColumn {
                         val itemsToShow = if (query.isEmpty()) uiState.suggestedCities else uiState.searchResults
                         items(itemsToShow) { result ->
-                            Column(
+                            Row(
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .clickable {
@@ -136,10 +240,21 @@ fun WeatherHome(viewModel: WeatherViewModel = viewModel()) {
                                         showSearchDialog = false
                                         query = ""
                                     }
-                                    .padding(16.dp)
+                                    .padding(16.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween
                             ) {
-                                Text(text = result.name, fontWeight = FontWeight.Bold)
-                                Text(text = result.description, style = TextStyle(color = Color.Gray))
+                                Column {
+                                    Text(text = result.name, fontWeight = FontWeight.Bold)
+                                    Text(text = result.description, style = TextStyle(color = Color.Gray))
+                                }
+                                IconButton(onClick = { viewModel.addToFavorites(result) }) {
+                                    val isFav = uiState.favoriteCities.any { it.id == result.id }
+                                    Icon(
+                                        if (isFav) Icons.Default.Star else Icons.Outlined.Star, 
+                                        contentDescription = "Favorite",
+                                        tint = if (isFav) Color(0xFF48319D) else Color.Gray
+                                    )
+                                }
                             }
                         }
                     }
@@ -153,7 +268,10 @@ fun WeatherHome(viewModel: WeatherViewModel = viewModel()) {
             .fillMaxSize()
             .background(
                 brush = Brush.linearGradient(
-                    colors = listOf(Color(0xFF2E335A), Color(0xFF1C1B33)),
+                    colors = if (uiState.isDarkTheme) 
+                        listOf(Color(0xFF1C1B33), Color(0xFF000000)) 
+                    else 
+                        listOf(Color(0xFF2E335A), Color(0xFF1C1B33)),
                     start = androidx.compose.ui.geometry.Offset(0f, 0f),
                     end = androidx.compose.ui.geometry.Offset(Float.POSITIVE_INFINITY, Float.POSITIVE_INFINITY)
                 )
@@ -167,7 +285,7 @@ fun WeatherHome(viewModel: WeatherViewModel = viewModel()) {
             modifier = Modifier.fillMaxSize()
         )
 
-        // House
+        // House (Fixed behind scrollable content)
         AsyncImage(
             model = R.drawable.img_house,
             contentDescription = "House",
@@ -175,105 +293,153 @@ fun WeatherHome(viewModel: WeatherViewModel = viewModel()) {
             modifier = Modifier
                 .fillMaxWidth()
                 .align(Alignment.TopCenter)
-                .offset(y = 304.dp)
+                .offset(y = 150.dp)
         )
 
-        // Weather Info
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(top = 98.dp)
+        // Scrollable Content
+        LazyColumn(
+            modifier = Modifier.fillMaxSize(),
+            contentPadding = innerPadding
         ) {
-            Text(
-                text = uiState.city,
-                style = TextStyle(
-                    fontSize = 34.sp,
-                    color = Color.White,
-                    fontWeight = FontWeight.Normal
-                )
-            )
-            Text(
-                text = uiState.currentTemp,
-                style = TextStyle(
-                    fontSize = 96.sp,
-                    color = Color.White,
-                    fontWeight = FontWeight.Thin
-                )
-            )
-            Text(
-                text = uiState.condition,
-                style = TextStyle(
-                    fontSize = 20.sp,
-                    color = Color(0x99EBEBF5),
-                    fontWeight = FontWeight.SemiBold
-                )
-            )
-            Text(
-                text = uiState.highLow,
-                style = TextStyle(
-                    fontSize = 20.sp,
-                    color = Color.White,
-                    fontWeight = FontWeight.SemiBold
-                )
-            )
-        }
-
-        // Modal / Bottom Sheet
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(325.dp)
-                .align(Alignment.BottomCenter)
-        ) {
-            // Backgrounds
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(
-                        brush = Brush.verticalGradient(
-                            colors = listOf(
-                                Color(0xFF2E335A).copy(alpha = 0.8f),
-                                Color(0xFF1C1B33).copy(alpha = 0.9f)
-                            )
-                        ),
-                        shape = RoundedCornerShape(topStart = 44.dp, topEnd = 44.dp)
-                    )
-            )
-            AsyncImage(
-                model = R.drawable.img_rectangle,
-                contentDescription = null,
-                modifier = Modifier.fillMaxSize(),
-                contentScale = ContentScale.FillBounds
-            )
-
-            // Hourly Forecast
-            Column(modifier = Modifier.padding(top = 69.dp)) {
-                LazyRow(
-                    contentPadding = PaddingValues(horizontal = 20.dp),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+            // Weather Info Header
+            item {
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 48.dp)
                 ) {
-                    items(uiState.hourly) { item ->
-                        HourlyItem(item = item)
+                    Text(
+                        text = uiState.city,
+                        style = TextStyle(
+                            fontSize = 34.sp,
+                            color = Color.White,
+                            fontWeight = FontWeight.Normal
+                        )
+                    )
+                    Text(
+                        text = uiState.currentTemp,
+                        style = TextStyle(
+                            fontSize = 96.sp,
+                            color = Color.White,
+                            fontWeight = FontWeight.Thin
+                        )
+                    )
+                    Text(
+                        text = uiState.condition,
+                        style = TextStyle(
+                            fontSize = 20.sp,
+                            color = Color(0x99EBEBF5),
+                            fontWeight = FontWeight.SemiBold
+                        )
+                    )
+                    Text(
+                        text = uiState.highLow,
+                        style = TextStyle(
+                            fontSize = 20.sp,
+                            color = Color.White,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                    )
+                }
+            }
+
+            // Spacer to reveal the House
+            item {
+                Spacer(modifier = Modifier.height(300.dp))
+            }
+
+            // Bottom Sheet Content (Scrolls up)
+            item {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(
+                            brush = Brush.verticalGradient(
+                                colors = listOf(
+                                    Color(0xFF2E335A).copy(alpha = 0.8f),
+                                    Color(0xFF1C1B33).copy(alpha = 0.9f)
+                                )
+                            ),
+                            shape = RoundedCornerShape(topStart = 44.dp, topEnd = 44.dp)
+                        )
+                ) {
+                    AsyncImage(
+                        model = R.drawable.img_rectangle,
+                        contentDescription = null,
+                        modifier = Modifier.matchParentSize(),
+                        contentScale = ContentScale.FillBounds
+                    )
+
+                    Column(modifier = Modifier.padding(top = 20.dp)) {
+                        // Segmented Control
+                        Row(
+                            modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Text(
+                                "Почасовой прогноз", 
+                                color = if (selectedTab == 0) Color.White else Color(0x99EBEBF5), 
+                                modifier = Modifier
+                                    .padding(start = 32.dp)
+                                    .clickable { selectedTab = 0 }
+                            )
+                            Text(
+                                "Прогноз на неделю", 
+                                color = if (selectedTab == 1) Color.White else Color(0x99EBEBF5), 
+                                modifier = Modifier
+                                    .padding(end = 32.dp)
+                                    .clickable { selectedTab = 1 }
+                            )
+                        }
+                        
+                        if (selectedTab == 0) {
+                            // Hourly Forecast
+                            LazyRow(
+                                contentPadding = PaddingValues(horizontal = 20.dp),
+                                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                            ) {
+                                items(uiState.hourly) { item ->
+                                    HourlyItem(item = item)
+                                }
+                            }
+                        } else {
+                            // Weekly Forecast
+                            Column(
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                uiState.dailyForecast.forEach { item ->
+                                    DailyItem(item = item)
+                                }
+                            }
+                        }
+                        
+                        Spacer(modifier = Modifier.height(16.dp))
+                        
+                        // Extra Details Grid
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 20.dp)
+                                .horizontalScroll(rememberScrollState()),
+                            horizontalArrangement = Arrangement.spacedBy(16.dp)
+                        ) {
+                            WeatherDetailItem("Ощущается", uiState.apparentTemp)
+                            WeatherDetailItem("Ветер", uiState.windSpeed)
+                            WeatherDetailItem("Влажность", uiState.humidity)
+                            WeatherDetailItem("Давление", uiState.pressure)
+                            WeatherDetailItem("Восход", uiState.sunrise)
+                            WeatherDetailItem("Закат", uiState.sunset)
+                        }
+                        
+                        // Spacer for Tab Bar
+                        Spacer(modifier = Modifier.height(100.dp))
                     }
                 }
             }
-
-            // Segmented Control (Mock)
-            Box(modifier = Modifier.fillMaxWidth().height(49.dp)) {
-                Row(
-                    modifier = Modifier.fillMaxWidth().padding(top = 15.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Text("Почасовой прогноз", color = Color(0x99EBEBF5), modifier = Modifier.padding(start = 32.dp))
-                    Text("Прогноз на неделю", color = Color(0x99EBEBF5), modifier = Modifier.padding(end = 32.dp))
-                }
-                AsyncImage(model = R.drawable.img_underline, contentDescription = null, modifier = Modifier.align(Alignment.BottomCenter).fillMaxWidth())
-                AsyncImage(model = R.drawable.img_indicator, contentDescription = null, modifier = Modifier.align(Alignment.BottomCenter))
-            }
         }
 
-        // Tab Bar
+        // Tab Bar (Fixed at bottom)
         Box(
             modifier = Modifier
                 .fillMaxWidth()
@@ -329,18 +495,21 @@ fun WeatherHome(viewModel: WeatherViewModel = viewModel()) {
                 )
                 Icon(
                     imageVector = Icons.Default.List,
-                    contentDescription = "List",
+                    contentDescription = "Favorites",
                     tint = Color.White,
-                    modifier = Modifier.size(32.dp)
+                    modifier = Modifier
+                        .size(32.dp)
+                        .clickable { showFavoritesDialog = true }
                 )
             }
             
-            // Plus Button
+            // Plus Button (Settings for now)
              Box(
                 modifier = Modifier
                     .align(Alignment.TopCenter)
                     .offset(y = 4.dp)
                     .size(64.dp)
+                    .clickable { showSettingsDialog = true }
             ) {
                  AsyncImage(
                     model = R.drawable.img_ellipse_4,
@@ -353,8 +522,8 @@ fun WeatherHome(viewModel: WeatherViewModel = viewModel()) {
                     modifier = Modifier.fillMaxSize().padding(3.dp)
                 )
                 Icon(
-                    imageVector = Icons.Default.Add,
-                    contentDescription = "Add",
+                    imageVector = Icons.Default.Settings, // Changed to Settings
+                    contentDescription = "Settings",
                     tint = Color(0xFF48319D),
                     modifier = Modifier
                         .size(32.dp)
@@ -362,6 +531,21 @@ fun WeatherHome(viewModel: WeatherViewModel = viewModel()) {
                 )
             }
         }
+    }
+}
+
+@Composable
+fun WeatherDetailItem(label: String, value: String) {
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = Modifier
+            .background(Color(0x33FFFFFF), RoundedCornerShape(16.dp))
+            .padding(12.dp)
+            .width(80.dp)
+    ) {
+        Text(text = label, color = Color(0x99EBEBF5), fontSize = 12.sp)
+        Spacer(modifier = Modifier.height(4.dp))
+        Text(text = value, color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.Bold)
     }
 }
 
@@ -396,5 +580,54 @@ fun HourlyItem(item: HourlyUiItem) {
             modifier = Modifier.size(32.dp)
         )
         Text(text = item.temp, color = Color.White, fontSize = 20.sp)
+    }
+}
+
+@Composable
+fun DailyItem(item: DailyUiItem) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 20.dp, vertical = 8.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            text = item.day,
+            color = Color.White,
+            fontSize = 18.sp,
+            fontWeight = FontWeight.Medium,
+            modifier = Modifier.width(100.dp)
+        )
+        
+        // Simplified icon mapping
+        val iconRes = when(item.iconRes) {
+            0, 1 -> R.drawable.img_small_sun_cloud_mid_rain // Placeholder
+            else -> R.drawable.img_big_moon_cloud_mid_rain // Placeholder
+        }
+        
+        AsyncImage(
+            model = iconRes,
+            contentDescription = null,
+            modifier = Modifier.size(32.dp)
+        )
+        
+        Row(
+            modifier = Modifier.width(100.dp),
+            horizontalArrangement = Arrangement.End
+        ) {
+            Text(
+                text = item.maxTemp,
+                color = Color.White,
+                fontSize = 18.sp,
+                fontWeight = FontWeight.Bold
+            )
+            Spacer(modifier = Modifier.width(16.dp))
+            Text(
+                text = item.minTemp,
+                color = Color(0x99EBEBF5),
+                fontSize = 18.sp
+            )
+        }
     }
 }

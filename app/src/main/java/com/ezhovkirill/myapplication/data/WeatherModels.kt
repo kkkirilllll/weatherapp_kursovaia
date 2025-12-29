@@ -10,7 +10,12 @@ data class WeatherResponse(
 
 data class CurrentWeather(
     @SerializedName("temperature_2m") val temperature: Double,
-    @SerializedName("weather_code") val weatherCode: Int
+    @SerializedName("weather_code") val weatherCode: Int,
+    @SerializedName("apparent_temperature") val apparentTemperature: Double?,
+    @SerializedName("relative_humidity_2m") val humidity: Int?,
+    @SerializedName("surface_pressure") val pressure: Double?,
+    @SerializedName("wind_speed_10m") val windSpeed: Double?,
+    @SerializedName("wind_direction_10m") val windDirection: Int?
 )
 
 data class HourlyWeather(
@@ -23,7 +28,9 @@ data class DailyWeather(
     @SerializedName("time") val time: List<String>,
     @SerializedName("weather_code") val weatherCodes: List<Int>,
     @SerializedName("temperature_2m_max") val maxTemps: List<Double>,
-    @SerializedName("temperature_2m_min") val minTemps: List<Double>
+    @SerializedName("temperature_2m_min") val minTemps: List<Double>,
+    @SerializedName("sunrise") val sunrise: List<String>?,
+    @SerializedName("sunset") val sunset: List<String>?
 )
 
 data class GeocodingResponse(

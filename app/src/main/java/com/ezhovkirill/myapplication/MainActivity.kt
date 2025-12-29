@@ -6,8 +6,12 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.Scaffold
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.ezhovkirill.myapplication.ui.WeatherHome
+import com.ezhovkirill.myapplication.ui.WeatherViewModel
 import com.ezhovkirill.myapplication.ui.theme.MyApplicationTheme
 
 class MainActivity : ComponentActivity() {
@@ -15,14 +19,12 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
-            MyApplicationTheme {
+            val viewModel: WeatherViewModel = viewModel()
+            val uiState by viewModel.uiState.collectAsState()
+
+            MyApplicationTheme(darkTheme = uiState.isDarkTheme) {
                 Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
-                    // Pass innerPadding if WeatherHome supports it, or handle it inside WeatherHome
-                    // For now, assuming WeatherHome handles its own layout or ignores padding for full screen
-                    // But since WeatherHome has a background image, it likely wants to be full screen.
-                    // However, Scaffold provides padding for system bars.
-                    // Let's check WeatherHome again to see if it takes a modifier.
-                    WeatherHome()
+                    WeatherHome(viewModel = viewModel, innerPadding = innerPadding)
                 }
             }
         }
